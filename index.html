@@ -4,15 +4,58 @@
 <meta charset="UTF-8">
 <title>オリジナルコード読み取り</title>
 <style>
-body { font-family:sans-serif; text-align:center; margin:20px; }
-video { border:1px solid #000; max-width:90%; height:auto; }
+body { 
+    font-family:sans-serif; 
+    text-align:center; 
+    margin:20px; 
+    background-color: #f0f0f0;
+}
+video { 
+    border:2px solid #333; 
+    max-width:90%; 
+    height:auto; 
+    border-radius: 8px;
+    background-color: #000;
+}
+#result {
+    background-color: white;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px auto;
+    max-width: 500px;
+    border: 1px solid #ddd;
+}
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    margin: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+}
+button:hover {
+    background-color: #0056b3;
+}
+.status {
+    margin: 10px 0;
+    padding: 5px;
+    border-radius: 3px;
+}
+.error { background-color: #ffebee; color: #c62828; }
+.success { background-color: #e8f5e8; color: #2e7d32; }
+.warning { background-color: #fff3e0; color: #ef6c00; }
 </style>
 </head>
 <body>
 <h2>カメラでコード自動読み取り</h2>
-<!-- 重要: playsinline, muted を追加 -->
-<video id="video" autoplay playsinline muted></video>
-<p id="result">解析中...</p>
+<button id="startBtn">カメラを開始</button>
+<button id="switchBtn" style="display:none;">カメラ切り替え</button>
+
+<video id="video" autoplay playsinline muted style="display:none;"></video>
+<p id="status" class="status">カメラ開始ボタンを押してください</p>
+<p id="result">待機中...</p>
 <canvas id="canvas" width="300" height="120" style="display:none;"></canvas>
 
 <script>
@@ -20,62 +63,190 @@ const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const result = document.getElementById('result');
-const BLOCK_W = 50, BLOCK_H = 50;
+const status = document.getElementById('status');
+const startBtn = document.getElementById('startBtn');
+const switchBtn = document.getElementById('switchBtn');
 
-// カメラ起動
-navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "environment" } // 背面カメラ優先
-})
-.then(stream=>{
-    video.srcObject = stream;
-    video.play();
-})
-.catch(err=>{
-    console.error("カメラエラー:", err);
-    result.innerText = "カメラを開けませんでした: " + err.message;
-});
+const BLOCK_W = 50, BLOCK_H = 50;
+let currentStream = null;
+let useFrontCamera = false;
+
+// ステータス表示関数
+function showStatus(message, type = 'warning') {
+    status.innerHTML = message;
+    status.className = 'status ' + type;
+}
+
+// カメラ開始関数
+async function startCamera() {
+    try {
+        // 既存のストリームを停止
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+        }
+
+        showStatus('カメラにアクセス中...', 'warning');
+
+        // カメラ制約
+        const constraints = {
+            video: {
+                facingMode: useFrontCamera ? "user" : "environment",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+
+        // フォールバック制約（facingModeが使えない場合）
+        const fallbackConstraints = {
+            video: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (err) {
+            console.log('facingModeでの取得に失敗、フォールバックを試行:', err);
+            stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+        }
+
+        currentStream = stream;
+        video.srcObject = stream;
+        
+        // ビデオの準備完了を待つ
+        video.onloadedmetadata = () => {
+            video.play().then(() => {
+                showStatus('カメラ起動成功！コードをカメラに向けてください', 'success');
+                video.style.display = 'block';
+                startBtn.style.display = 'none';
+                switchBtn.style.display = 'inline-block';
+                startDecoding();
+            }).catch(err => {
+                console.error('ビデオ再生エラー:', err);
+                showStatus('ビデオの再生に失敗しました: ' + err.message, 'error');
+            });
+        };
+
+    } catch (err) {
+        console.error('カメラエラー:', err);
+        let errorMessage = 'カメラを開けませんでした: ';
+        
+        if (err.name === 'NotAllowedError') {
+            errorMessage += 'カメラへのアクセスが拒否されました。ブラウザの設定を確認してください。';
+        } else if (err.name === 'NotFoundError') {
+            errorMessage += 'カメラが見つかりません。';
+        } else if (err.name === 'NotSupportedError') {
+            errorMessage += 'このブラウザはカメラをサポートしていません。';
+        } else if (err.name === 'NotReadableError') {
+            errorMessage += 'カメラが他のアプリケーションで使用中です。';
+        } else {
+            errorMessage += err.message;
+        }
+        
+        showStatus(errorMessage, 'error');
+    }
+}
+
+// カメラ切り替え
+function switchCamera() {
+    useFrontCamera = !useFrontCamera;
+    showStatus('カメラを切り替え中...', 'warning');
+    startCamera();
+}
 
 // 色から文字判定
 function colorToChar(r,g,b){
-    if(r>150 && g<100 && b<100) return 'A'; //大文字
-    if(b>150 && r<100 && g<100) return 'a'; //小文字
-    if(g>150 && r<100 && b<100) return '0'; //数字
+    if(r>150 && g<100 && b<100) return 'A'; //赤→大文字
+    if(b>150 && r<100 && g<100) return 'a'; //青→小文字
+    if(g>150 && r<100 && b<100) return '0'; //緑→数字
     return '';
+}
+
+// デコード開始
+function startDecoding() {
+    decodeFrame();
 }
 
 // フレーム解析
 function decodeFrame(){
-    if(video.readyState === video.HAVE_ENOUGH_DATA){
-        ctx.drawImage(video,0,0,canvas.width,canvas.height);
-        const img = ctx.getImageData(0,0,canvas.width,canvas.height).data;
-        let code_id='';
-        for(let by=0;by<2;by++){
-            for(let bx=0;bx<5;bx++){
-                let rSum=0,gSum=0,bSum=0,count=0;
-                for(let y=Math.floor(by*BLOCK_H);y<Math.floor((by+1)*BLOCK_H);y++){
-                    for(let x=Math.floor(bx*BLOCK_W);x<Math.floor((bx+1)*BLOCK_W);x++){
-                        const idx=(y*canvas.width + x)*4;
-                        rSum+=img[idx]; gSum+=img[idx+1]; bSum+=img[idx+2]; count++;
+    if(video.readyState === video.HAVE_ENOUGH_DATA && !video.paused){
+        try {
+            ctx.drawImage(video,0,0,canvas.width,canvas.height);
+            const img = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+            let code_id='';
+            
+            for(let by=0;by<2;by++){
+                for(let bx=0;bx<5;bx++){
+                    let rSum=0,gSum=0,bSum=0,count=0;
+                    for(let y=Math.floor(by*BLOCK_H);y<Math.floor((by+1)*BLOCK_H);y++){
+                        for(let x=Math.floor(bx*BLOCK_W);x<Math.floor((bx+1)*BLOCK_W);x++){
+                            if(y < canvas.height && x < canvas.width) {
+                                const idx=(y*canvas.width + x)*4;
+                                rSum+=img[idx]; 
+                                gSum+=img[idx+1]; 
+                                bSum+=img[idx+2]; 
+                                count++;
+                            }
+                        }
+                    }
+                    if(count > 0) {
+                        rSum=Math.floor(rSum/count);
+                        gSum=Math.floor(gSum/count);
+                        bSum=Math.floor(bSum/count);
+                        const c=colorToChar(rSum,gSum,bSum);
+                        code_id += c;
                     }
                 }
-                rSum=Math.floor(rSum/count);
-                gSum=Math.floor(gSum/count);
-                bSum=Math.floor(bSum/count);
-                const c=colorToChar(rSum,gSum,bSum);
-                code_id += c;
             }
-        }
-        if(code_id){
-            fetch('https://collectors-hb-hampshire-rush.trycloudflare.com/api/get/'+code_id)
-            .then(res=>res.json())
-            .then(data=>result.innerText='読み取ったデータ:\n'+data.text)
-            .catch(()=>result.innerText='データ取得失敗');
+            
+            if(code_id && code_id.length === 10){
+                result.innerText = 'コードID: ' + code_id + '\nサーバーに問い合わせ中...';
+                
+                fetch('https://collectors-hb-hampshire-rush.trycloudflare.com/api/get/'+code_id)
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('HTTP ' + res.status);
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    result.innerText = '読み取ったデータ:\n' + JSON.stringify(data, null, 2);
+                })
+                .catch(err => {
+                    result.innerText = 'データ取得失敗: ' + err.message + '\nコードID: ' + code_id;
+                });
+            } else {
+                result.innerText = '解析中... (検出コード: ' + code_id + ')';
+            }
+        } catch (err) {
+            console.error('デコードエラー:', err);
         }
     }
+    
+    // 継続してフレーム解析
     requestAnimationFrame(decodeFrame);
 }
 
-decodeFrame();
+// イベントリスナー
+startBtn.addEventListener('click', startCamera);
+switchBtn.addEventListener('click', switchCamera);
+
+// ページ離脱時にカメラを停止
+window.addEventListener('beforeunload', () => {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
+});
+
+// MediaDevicesがサポートされているかチェック
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showStatus('このブラウザはカメラをサポートしていません。Chrome、Firefox、Safari等の最新ブラウザをお使いください。', 'error');
+    startBtn.style.display = 'none';
+} else {
+    showStatus('カメラ開始ボタンを押してください', 'warning');
+}
 </script>
 </body>
 </html>
