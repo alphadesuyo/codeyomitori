@@ -8,69 +8,229 @@ body {
     font-family:sans-serif; 
     text-align:center; 
     margin:20px; 
-    background-color: #f0f0f0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
 }
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+}
+
+h1 {
+    margin: 0 0 30px 0;
+    color: #4a5568;
+    font-size: 2.5em;
+    font-weight: 300;
+}
+
 video { 
-    border:2px solid #333; 
+    border:3px solid #333; 
     max-width:90%; 
     height:auto; 
-    border-radius: 8px;
+    border-radius: 15px;
     background-color: #000;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
 }
-#result {
-    background-color: white;
-    padding: 10px;
-    border-radius: 5px;
-    margin: 10px auto;
-    max-width: 500px;
-    border: 1px solid #ddd;
-}
+
 button {
-    padding: 10px 20px;
+    padding: 12px 24px;
     font-size: 16px;
     margin: 10px;
     border: none;
-    border-radius: 5px;
-    background-color: #007bff;
-    color: white;
+    border-radius: 10px;
     cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    min-width: 120px;
 }
-button:hover {
-    background-color: #0056b3;
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
 }
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.btn-secondary:hover {
+    background: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+.btn-capture {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    font-size: 18px;
+    padding: 15px 30px;
+    border-radius: 50px;
+}
+
+.btn-capture:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(72, 187, 120, 0.3);
+}
+
 .status {
-    margin: 10px 0;
-    padding: 5px;
-    border-radius: 3px;
+    margin: 15px 0;
+    padding: 15px;
+    border-radius: 10px;
+    font-weight: 500;
+    animation: fadeIn 0.3s ease;
 }
-.error { background-color: #ffebee; color: #c62828; }
-.success { background-color: #e8f5e8; color: #2e7d32; }
-.warning { background-color: #fff3e0; color: #ef6c00; }
+
+.status.success { background: #f0fff4; color: #22543d; border: 2px solid #9ae6b4; }
+.status.error { background: #fed7d7; color: #c53030; border: 2px solid #feb2b2; }
+.status.warning { background: #fff3e0; color: #ef6c00; border: 2px solid #ffcc02; }
+.status.info { background: #ebf8ff; color: #2c5282; border: 2px solid #90cdf4; }
+
+#result {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 15px;
+    margin: 20px 0;
+    border-left: 5px solid #667eea;
+    text-align: left;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+#capturedImage {
+    max-width: 100%;
+    border-radius: 10px;
+    margin: 15px 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 5px;
+    margin: 15px 0;
+    padding: 15px;
+    background: #edf2f7;
+    border-radius: 10px;
+}
+
+.analysis-cell {
+    aspect-ratio: 1;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    font-size: 14px;
+    border: 2px solid #2d3748;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+@media(max-width: 480px) {
+    .container {
+        margin: 10px;
+        padding: 20px;
+        border-radius: 15px;
+    }
+    
+    h1 { font-size: 2em; }
+    
+    .analysis-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
 </style>
 </head>
 <body>
-<h2>カメラでコード自動読み取り</h2>
-<button id="startBtn">カメラを開始</button>
-<button id="switchBtn" style="display:none;">カメラ切り替え</button>
-
-<video id="video" autoplay playsinline muted style="display:none;"></video>
-<p id="status" class="status">カメラ開始ボタンを押してください</p>
-<p id="result">待機中...</p>
-<canvas id="canvas" width="600" height="400" style="display:none;"></canvas>
+<div class="container">
+    <h1>📸 コード読み取りシステム</h1>
+    
+    <button id="startBtn" class="btn-primary">📹 カメラ開始</button>
+    <button id="switchBtn" class="btn-secondary" style="display:none;">🔄 カメラ切替</button>
+    
+    <video id="video" autoplay playsinline muted style="display:none;"></video>
+    
+    <div id="captureSection" style="display:none;">
+        <button id="captureBtn" class="btn-capture">📸 写真を撮って解析</button>
+    </div>
+    
+    <div id="status" class="status warning">カメラ開始ボタンを押してください</div>
+    
+    <canvas id="capturedImage" style="display:none;"></canvas>
+    <div id="analysisResult" style="display:none;">
+        <h3>🔍 解析結果</h3>
+        <div id="analysisGrid" class="analysis-grid"></div>
+    </div>
+    
+    <div id="result">待機中...</div>
+    
+    <canvas id="canvas" style="display:none;"></canvas>
+</div>
 
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
+const capturedImageCanvas = document.getElementById('capturedImage');
 const ctx = canvas.getContext('2d');
+const capturedCtx = capturedImageCanvas.getContext('2d');
 const result = document.getElementById('result');
 const status = document.getElementById('status');
 const startBtn = document.getElementById('startBtn');
 const switchBtn = document.getElementById('switchBtn');
+const captureBtn = document.getElementById('captureBtn');
+const captureSection = document.getElementById('captureSection');
+const analysisResult = document.getElementById('analysisResult');
+const analysisGrid = document.getElementById('analysisGrid');
 
-const BLOCK_W = 50, BLOCK_H = 50;
 let currentStream = null;
 let useFrontCamera = false;
-let isDecoding = false;
+
+// 改良された文字マッピング
+const charMapping = {
+    // 赤色（大文字）のマッピング
+    'red_0': 'A', 'red_1': 'B', 'red_2': 'C', 'red_3': 'D', 'red_4': 'E',
+    'red_5': 'F', 'red_6': 'G', 'red_7': 'H', 'red_8': 'I', 'red_9': 'J',
+    'red_10': 'K', 'red_11': 'L', 'red_12': 'M', 'red_13': 'N', 'red_14': 'O',
+    'red_15': 'P', 'red_16': 'Q', 'red_17': 'R', 'red_18': 'S', 'red_19': 'T',
+    'red_20': 'U', 'red_21': 'V', 'red_22': 'W', 'red_23': 'X', 'red_24': 'Y', 'red_25': 'Z',
+    
+    // 青色（小文字）のマッピング
+    'blue_0': 'a', 'blue_1': 'b', 'blue_2': 'c', 'blue_3': 'd', 'blue_4': 'e',
+    'blue_5': 'f', 'blue_6': 'g', 'blue_7': 'h', 'blue_8': 'i', 'blue_9': 'j',
+    'blue_10': 'k', 'blue_11': 'l', 'blue_12': 'm', 'blue_13': 'n', 'blue_14': 'o',
+    'blue_15': 'p', 'blue_16': 'q', 'blue_17': 'r', 'blue_18': 's', 'blue_19': 't',
+    'blue_20': 'u', 'blue_21': 'v', 'blue_22': 'w', 'blue_23': 'x', 'blue_24': 'y', 'blue_25': 'z',
+    
+    // 緑色（数字）のマッピング
+    'green_0': '0', 'green_1': '1', 'green_2': '2', 'green_3': '3', 'green_4': '4',
+    'green_5': '5', 'green_6': '6', 'green_7': '7', 'green_8': '8', 'green_9': '9'
+};
+
+// 逆マッピング（生成時用）
+const reverseCharMapping = {};
+Object.keys(charMapping).forEach(key => {
+    reverseCharMapping[charMapping[key]] = key;
+});
 
 // ステータス表示関数
 function showStatus(message, type = 'warning') {
@@ -78,17 +238,15 @@ function showStatus(message, type = 'warning') {
     status.className = 'status ' + type;
 }
 
-// カメラ開始関数
+// カメラ開始
 async function startCamera() {
     try {
-        // 既存のストリームを停止
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        showStatus('カメラにアクセス中...', 'warning');
+        showStatus('📹 カメラにアクセス中...', 'info');
 
-        // カメラ制約
         const constraints = {
             video: {
                 facingMode: useFrontCamera ? "user" : "environment",
@@ -97,51 +255,39 @@ async function startCamera() {
             }
         };
 
-        // フォールバック制約（facingModeが使えない場合）
-        const fallbackConstraints = {
-            video: {
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        };
+        const fallbackConstraints = { video: { width: { ideal: 1280 }, height: { ideal: 720 } } };
 
         let stream;
         try {
             stream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (err) {
-            console.log('facingModeでの取得に失敗、フォールバックを試行:', err);
+            console.log('facingModeでの取得に失敗、フォールバック:', err);
             stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
         }
 
         currentStream = stream;
         video.srcObject = stream;
         
-        // ビデオの準備完了を待つ
         video.onloadedmetadata = () => {
             video.play().then(() => {
-                showStatus('カメラ起動成功！コードをカメラに向けてください', 'success');
+                showStatus('✅ カメラ起動成功！コードを画面に映して写真を撮ってください', 'success');
                 video.style.display = 'block';
                 startBtn.style.display = 'none';
                 switchBtn.style.display = 'inline-block';
-                startDecoding();
+                captureSection.style.display = 'block';
             }).catch(err => {
-                console.error('ビデオ再生エラー:', err);
-                showStatus('ビデオの再生に失敗しました: ' + err.message, 'error');
+                showStatus('❌ ビデオの再生に失敗: ' + err.message, 'error');
             });
         };
 
     } catch (err) {
         console.error('カメラエラー:', err);
-        let errorMessage = 'カメラを開けませんでした: ';
+        let errorMessage = '❌ カメラエラー: ';
         
         if (err.name === 'NotAllowedError') {
-            errorMessage += 'カメラへのアクセスが拒否されました。ブラウザの設定を確認してください。';
+            errorMessage += 'カメラアクセスが拒否されました';
         } else if (err.name === 'NotFoundError') {
-            errorMessage += 'カメラが見つかりません。';
-        } else if (err.name === 'NotSupportedError') {
-            errorMessage += 'このブラウザはカメラをサポートしていません。';
-        } else if (err.name === 'NotReadableError') {
-            errorMessage += 'カメラが他のアプリケーションで使用中です。';
+            errorMessage += 'カメラが見つかりません';
         } else {
             errorMessage += err.message;
         }
@@ -153,196 +299,209 @@ async function startCamera() {
 // カメラ切り替え
 function switchCamera() {
     useFrontCamera = !useFrontCamera;
-    showStatus('カメラを切り替え中...', 'warning');
+    showStatus('🔄 カメラを切り替え中...', 'info');
     startCamera();
 }
 
-// 改良された色判定（HSV色空間も考慮）
-function colorToChar(r,g,b){
-    // RGB値の正規化
-    const total = r + g + b;
-    if(total < 50) return ''; // 黒すぎる場合は無視
-    
-    const rRatio = r / Math.max(total, 1);
-    const gRatio = g / Math.max(total, 1);
-    const bRatio = b / Math.max(total, 1);
-    
-    // 赤が強い（大文字）
-    if(rRatio > 0.45 && r > 80 && r > g * 1.3 && r > b * 1.3) {
-        return 'A';
+// 写真撮影と解析
+function captureAndAnalyze() {
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        showStatus('⚠️ カメラの準備ができていません', 'warning');
+        return;
     }
-    // 青が強い（小文字）
-    if(bRatio > 0.45 && b > 80 && b > r * 1.3 && b > g * 1.3) {
-        return 'a';
-    }
-    // 緑が強い（数字）
-    if(gRatio > 0.45 && g > 80 && g > r * 1.3 && g > b * 1.3) {
-        return '0';
-    }
+
+    showStatus('📸 写真撮影中...', 'info');
+    captureBtn.disabled = true;
+
+    // ビデオから画像をキャプチャ
+    const videoWidth = video.videoWidth || video.width;
+    const videoHeight = video.videoHeight || video.height;
     
-    // フォールバック：絶対値での判定
-    if(r > 150 && g < 100 && b < 100) return 'A';
-    if(b > 150 && r < 100 && g < 100) return 'a';
-    if(g > 150 && r < 100 && b < 100) return '0';
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+    ctx.drawImage(video, 0, 0);
+
+    // キャプチャした画像を表示用キャンバスにも描画
+    const displayWidth = Math.min(400, videoWidth);
+    const displayHeight = Math.floor(displayWidth * videoHeight / videoWidth);
     
-    return '';
+    capturedImageCanvas.width = displayWidth;
+    capturedImageCanvas.height = displayHeight;
+    capturedCtx.drawImage(canvas, 0, 0, displayWidth, displayHeight);
+    capturedImageCanvas.style.display = 'block';
+
+    // 解析実行
+    analyzeImage();
+    
+    setTimeout(() => {
+        captureBtn.disabled = false;
+    }, 2000);
 }
 
-// デコード開始
-function startDecoding() {
-    decodeFrame();
-}
+// 画像解析
+function analyzeImage() {
+    showStatus('🔍 画像を解析中...', 'info');
 
-// 改良されたフレーム解析
-function decodeFrame(){
-    if(video.readyState === video.HAVE_ENOUGH_DATA && !video.paused){
-        try {
-            // ビデオの実際のサイズを取得
-            const videoWidth = video.videoWidth || video.width;
-            const videoHeight = video.videoHeight || video.height;
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    const gridCols = 6;
+    const gridRows = 3;
+    const cellWidth = Math.floor(canvas.width / gridCols);
+    const cellHeight = Math.floor(canvas.height / gridRows);
+
+    let detectedCells = [];
+    let analysisHTML = '';
+
+    for (let row = 0; row < gridRows; row++) {
+        for (let col = 0; col < gridCols; col++) {
+            const cellResult = analyzeCell(data, canvas.width, canvas.height, col, row, cellWidth, cellHeight);
+            detectedCells.push(cellResult);
             
-            if(videoWidth === 0 || videoHeight === 0) {
-                requestAnimationFrame(decodeFrame);
-                return;
-            }
-            
-            // キャンバスサイズを動的に調整
-            const aspectRatio = videoWidth / videoHeight;
-            let canvasWidth = 600;
-            let canvasHeight = Math.floor(canvasWidth / aspectRatio);
-            
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
-            
-            // ビデオをキャンバスに描画
-            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
-            const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
-            const data = imageData.data;
-            
-            // グリッドサイズを動的計算
-            const gridCols = 6; // 生成側と合わせる
-            const gridRows = 3;
-            const cellWidth = Math.floor(canvasWidth / gridCols);
-            const cellHeight = Math.floor(canvasHeight / gridRows);
-            
-            let detectedCode = '';
-            let detectionConfidence = [];
-            
-            for(let row = 0; row < gridRows; row++){
-                for(let col = 0; col < gridCols; col++){
-                    let rSum = 0, gSum = 0, bSum = 0, count = 0;
-                    
-                    // セルの中央部分をサンプリング（ノイズを減らすため）
-                    const startX = col * cellWidth + Math.floor(cellWidth * 0.2);
-                    const endX = col * cellWidth + Math.floor(cellWidth * 0.8);
-                    const startY = row * cellHeight + Math.floor(cellHeight * 0.2);
-                    const endY = row * cellHeight + Math.floor(cellHeight * 0.8);
-                    
-                    for(let y = startY; y < endY; y++){
-                        for(let x = startX; x < endX; x++){
-                            if(x < canvasWidth && y < canvasHeight){
-                                const idx = (y * canvasWidth + x) * 4;
-                                rSum += data[idx];
-                                gSum += data[idx + 1];
-                                bSum += data[idx + 2];
-                                count++;
-                            }
-                        }
-                    }
-                    
-                    if(count > 0) {
-                        const avgR = Math.floor(rSum / count);
-                        const avgG = Math.floor(gSum / count);
-                        const avgB = Math.floor(bSum / count);
-                        
-                        const char = colorToChar(avgR, avgG, avgB);
-                        detectedCode += char;
-                        
-                        // 検出品質をチェック
-                        const brightness = (avgR + avgG + avgB) / 3;
-                        const colorStrength = Math.max(avgR, avgG, avgB) - Math.min(avgR, avgG, avgB);
-                        detectionConfidence.push({
-                            char, brightness, colorStrength,
-                            rgb: `R:${avgR} G:${avgG} B:${avgB}`
-                        });
-                    }
-                }
-            }
-            
-            // デバッグ情報を表示
-            const validChars = detectedCode.replace(/[^A-Za-z0-9]/g, '');
-            const detectionQuality = detectionConfidence.filter(d => d.char !== '').length;
-            
-            if(validChars.length >= 10){
-                // 完全なコードが検出された場合
-                result.innerHTML = `
-                    <div style="color: green; font-weight: bold;">✅ コード検出成功!</div>
-                    <div>コードID: <strong>${validChars}</strong></div>
-                    <div>サーバーに問い合わせ中...</div>
-                    <div style="font-size: 12px; color: #666;">検出品質: ${detectionQuality}/18</div>
-                `;
-                
-                // API呼び出し
-                fetch('https://collectors-hb-hampshire-rush.trycloudflare.com/api/get/' + validChars)
-                .then(res => {
-                    if (!res.ok) {
-                        throw new Error('HTTP ' + res.status);
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    result.innerHTML = `
-                        <div style="color: green; font-weight: bold;">📋 データ取得成功!</div>
-                        <div style="background: #f0f8ff; padding: 10px; border-radius: 5px; margin: 10px 0; text-align: left;">
-                            <strong>内容:</strong><br>
-                            ${data.text || 'データが見つかりませんでした'}
-                        </div>
-                        <div style="font-size: 12px; color: #666;">コードID: ${validChars}</div>
-                    `;
-                })
-                .catch(err => {
-                    result.innerHTML = `
-                        <div style="color: orange;">⚠️ データ取得失敗</div>
-                        <div>エラー: ${err.message}</div>
-                        <div>検出したコード: ${validChars}</div>
-                    `;
-                });
-            } else if(validChars.length > 0) {
-                // 部分的に検出された場合
-                result.innerHTML = `
-                    <div style="color: blue;">🔍 コード解析中...</div>
-                    <div>検出: "${validChars}" (${validChars.length}/10文字)</div>
-                    <div style="font-size: 12px; color: #666;">
-                        品質: ${detectionQuality}/18 | 
-                        生データ: "${detectedCode}"
-                    </div>
-                    <div style="font-size: 11px; color: #999;">
-                        カメラをコードに近づけて、照明を調整してください
-                    </div>
-                `;
-            } else {
-                // 何も検出されない場合
-                result.innerHTML = `
-                    <div style="color: #666;">👁️ コードを探しています...</div>
-                    <div style="font-size: 12px;">
-                        コードをカメラの中央に配置してください
-                    </div>
-                `;
-            }
-            
-        } catch (err) {
-            console.error('デコードエラー:', err);
-            result.innerHTML = `<div style="color: red;">エラー: ${err.message}</div>`;
+            // 解析結果をグリッドに表示
+            analysisHTML += `
+                <div class="analysis-cell" style="background-color: ${cellResult.dominantColor};">
+                    ${cellResult.char || '?'}
+                </div>
+            `;
         }
     }
+
+    // 解析結果表示
+    analysisGrid.innerHTML = analysisHTML;
+    analysisResult.style.display = 'block';
+
+    // コードIDを構築
+    const codeId = detectedCells.map(cell => cell.char).join('');
+    const validChars = codeId.replace(/[^A-Za-z0-9]/g, '');
+
+    if (validChars.length >= 10) {
+        showStatus('✅ コード検出成功！サーバーに問い合わせ中...', 'success');
+        fetchData(validChars, detectedCells);
+    } else {
+        showStatus(`⚠️ 不完全なコード検出 (${validChars.length}/10文字)`, 'warning');
+        result.innerHTML = `
+            <h3>❌ 解析失敗</h3>
+            <p><strong>検出したコード:</strong> "${validChars}" (${validChars.length}文字)</p>
+            <p>🔧 <strong>改善のヒント:</strong></p>
+            <ul>
+                <li>コードを画面の中央に配置してください</li>
+                <li>十分な明るさを確保してください</li>
+                <li>カメラとコードの距離を調整してください</li>
+                <li>コード全体が画面に収まるようにしてください</li>
+            </ul>
+        `;
+    }
+}
+
+// セル解析
+function analyzeCell(data, canvasWidth, canvasHeight, col, row, cellWidth, cellHeight) {
+    const startX = col * cellWidth + Math.floor(cellWidth * 0.2);
+    const endX = col * cellWidth + Math.floor(cellWidth * 0.8);
+    const startY = row * cellHeight + Math.floor(cellHeight * 0.2);
+    const endY = row * cellHeight + Math.floor(cellHeight * 0.8);
+
+    let rSum = 0, gSum = 0, bSum = 0, count = 0;
+
+    for (let y = startY; y < endY && y < canvasHeight; y++) {
+        for (let x = startX; x < endX && x < canvasWidth; x++) {
+            const idx = (y * canvasWidth + x) * 4;
+            rSum += data[idx];
+            gSum += data[idx + 1];
+            bSum += data[idx + 2];
+            count++;
+        }
+    }
+
+    if (count === 0) return { char: '', dominantColor: '#cccccc', confidence: 0 };
+
+    const avgR = rSum / count;
+    const avgG = gSum / count;
+    const avgB = bSum / count;
+
+    // 色判定の改善
+    const colorResult = determineColor(avgR, avgG, avgB);
     
-    // 継続してフレーム解析
-    requestAnimationFrame(decodeFrame);
+    return {
+        char: colorResult.char,
+        dominantColor: colorResult.color,
+        confidence: colorResult.confidence,
+        rgb: `rgb(${Math.round(avgR)}, ${Math.round(avgG)}, ${Math.round(avgB)})`
+    };
+}
+
+// 色判定ロジックの改善
+function determineColor(r, g, b) {
+    // 明度チェック
+    const brightness = (r + g + b) / 3;
+    if (brightness < 50) return { char: '', color: '#333333', confidence: 0 };
+
+    // 相対的な色の強さを計算
+    const total = r + g + b;
+    const rRatio = r / total;
+    const gRatio = g / total;
+    const bRatio = b / total;
+
+    let maxRatio = Math.max(rRatio, gRatio, bRatio);
+    let confidence = (maxRatio - 1/3) / (2/3); // 0-1の範囲に正規化
+
+    // 最小しきい値
+    const threshold = 0.15;
+
+    if (rRatio === maxRatio && rRatio > (1/3 + threshold)) {
+        return { char: 'A', color: '#FF0000', confidence };
+    } else if (bRatio === maxRatio && bRatio > (1/3 + threshold)) {
+        return { char: 'a', color: '#0000FF', confidence };
+    } else if (gRatio === maxRatio && gRatio > (1/3 + threshold)) {
+        return { char: '0', color: '#00AA00', confidence };
+    }
+
+    return { char: '', color: '#CCCCCC', confidence: 0 };
+}
+
+// データ取得
+async function fetchData(codeId, detectedCells) {
+    try {
+        const response = await fetch(`https://collectors-hb-hampshire-rush.trycloudflare.com/api/get/${codeId}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        result.innerHTML = `
+            <h3>✅ データ取得成功！</h3>
+            <div style="background: #e6fffa; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #38b2ac;">
+                <h4>📄 保存されていた内容:</h4>
+                <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #bee3f8;">
+                    ${data.text || 'データが見つかりませんでした'}
+                </div>
+            </div>
+            <div style="font-size: 14px; color: #666; margin-top: 15px;">
+                <p><strong>🆔 コードID:</strong> <code>${codeId}</code></p>
+                <p><strong>📊 検出品質:</strong> ${detectedCells.filter(c => c.char).length}/18 セル</p>
+            </div>
+        `;
+
+        showStatus('🎉 読み取り完了！', 'success');
+
+    } catch (error) {
+        console.error('Error:', error);
+        result.innerHTML = `
+            <h3>❌ データ取得エラー</h3>
+            <p><strong>エラー:</strong> ${error.message}</p>
+            <p><strong>検出したコードID:</strong> <code>${codeId}</code></p>
+            <p>サーバーとの通信に問題があるか、存在しないコードです。</p>
+        `;
+        showStatus(`❌ サーバーエラー: ${error.message}`, 'error');
+    }
 }
 
 // イベントリスナー
 startBtn.addEventListener('click', startCamera);
 switchBtn.addEventListener('click', switchCamera);
+captureBtn.addEventListener('click', captureAndAnalyze);
 
 // ページ離脱時にカメラを停止
 window.addEventListener('beforeunload', () => {
@@ -351,12 +510,10 @@ window.addEventListener('beforeunload', () => {
     }
 });
 
-// MediaDevicesがサポートされているかチェック
+// ブラウザサポートチェック
 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    showStatus('このブラウザはカメラをサポートしていません。Chrome、Firefox、Safari等の最新ブラウザをお使いください。', 'error');
+    showStatus('❌ このブラウザはカメラをサポートしていません', 'error');
     startBtn.style.display = 'none';
-} else {
-    showStatus('カメラ開始ボタンを押してください', 'warning');
 }
 </script>
 </body>
