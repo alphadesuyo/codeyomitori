@@ -13,9 +13,9 @@ video { border:1px solid #000; }
 </head>
 <body>
 <h2>カメラでコード自動読み取り</h2>
-<video id="video" width="300" height="120" autoplay></video>
+<video id="video" autoplay playsinline muted></video>
 <p id="result">解析中...</p>
-<canvas id="canvas" width="300" height="120" style="display:none;"></canvas>
+<canvas id="canvas" style="display:none;"></canvas>
 
 <script>
 const video = document.getElementById('video');
@@ -25,9 +25,20 @@ const result = document.getElementById('result');
 const BLOCK_W = 50, BLOCK_H = 50;
 
 // カメラ起動
-navigator.mediaDevices.getUserMedia({video:true})
-.then(stream=>video.srcObject=stream)
-.catch(err=>console.error(err));
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => {
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+        video.play();
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        decodeFrame();
+    };
+})
+.catch(err => {
+    console.error('カメラ取得失敗:', err);
+    result.innerText = 'カメラが開けませんでした';
+});
 
 // 色から文字判定
 function colorToChar(r,g,b){
@@ -39,37 +50,45 @@ function colorToChar(r,g,b){
 
 // フレーム解析
 function decodeFrame(){
+    if(video.readyState < 2){
+        requestAnimationFrame(decodeFrame);
+        return;
+    }
+
     ctx.drawImage(video,0,0,canvas.width,canvas.height);
     const img = ctx.getImageData(0,0,canvas.width,canvas.height).data;
-    let code_id='';
-    for(let by=0;by<2;by++){
-        for(let bx=0;bx<5;bx++){
+    let code_id = '';
+    for(let by=0; by<2; by++){
+        for(let bx=0; bx<5; bx++){
             let rSum=0,gSum=0,bSum=0,count=0;
-            for(let y=Math.floor(by*BLOCK_H);y<Math.floor((by+1)*BLOCK_H);y++){
-                for(let x=Math.floor(bx*BLOCK_W);x<Math.floor((bx+1)*BLOCK_W);x++){
-                    const idx=(y*canvas.width + x)*4;
-                    rSum+=img[idx]; gSum+=img[idx+1]; bSum+=img[idx+2]; count++;
+            for(let y=Math.floor(by*BLOCK_H); y<Math.floor((by+1)*BLOCK_H); y++){
+                for(let x=Math.floor(bx*BLOCK_W); x<Math.floor((bx+1)*BLOCK_W); x++){
+                    const idx = (y*canvas.width + x)*4;
+                    rSum += img[idx];
+                    gSum += img[idx+1];
+                    bSum += img[idx+2];
+                    count++;
                 }
             }
-            rSum=Math.floor(rSum/count);
-            gSum=Math.floor(gSum/count);
-            bSum=Math.floor(bSum/count);
-            const c=colorToChar(rSum,gSum,bSum);
-            code_id += c;
+            rSum = Math.floor(rSum/count);
+            gSum = Math.floor(gSum/count);
+            bSum = Math.floor(bSum/count);
+            code_id += colorToChar(rSum,gSum,bSum);
         }
     }
 
     if(code_id){
-        fetch('https://collectors-hb-hampshire-rush.trycloudflare.com/api/get/'+code_id)
-        .then(res=>res.json())
-        .then(data=>result.innerText='読み取ったデータ:\n'+data.text)
-        .catch(()=>result.innerText='データ取得失敗');
+        fetch('https://collectors-hb-hampshire-rush.trycloudflare.com/api/get/' + code_id)
+        .then(res => res.json())
+        .then(data => {
+            if(data.text) result.innerText = '読み取ったデータ:\n' + data.text;
+            else result.innerText = 'データが見つかりません';
+        })
+        .catch(() => result.innerText = 'データ取得失敗');
     }
 
     requestAnimationFrame(decodeFrame);
 }
-
-decodeFrame();
 </script>
 </body>
 </html>
