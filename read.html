@@ -5,15 +5,13 @@
 <title>オリジナルコード読み取り</title>
 <style>
 body { font-family:sans-serif; text-align:center; margin:20px; }
-video { border:1px solid #000; }
-@media(max-width:480px){
-    video { width: 90%; height:auto; }
-}
+video { border:1px solid #000; max-width:90%; height:auto; }
 </style>
 </head>
 <body>
 <h2>カメラでコード自動読み取り</h2>
-<video id="video" width="300" height="120" autoplay playsinline></video>
+<!-- 重要: playsinline, muted を追加 -->
+<video id="video" autoplay playsinline muted></video>
 <p id="result">解析中...</p>
 <canvas id="canvas" width="300" height="120" style="display:none;"></canvas>
 
@@ -30,11 +28,11 @@ navigator.mediaDevices.getUserMedia({
 })
 .then(stream=>{
     video.srcObject = stream;
-    return video.play().catch(err => console.error("再生失敗:", err));
+    video.play();
 })
 .catch(err=>{
-    console.error("カメラ起動エラー:", err);
-    result.innerText = "カメラが使えません: " + err.message;
+    console.error("カメラエラー:", err);
+    result.innerText = "カメラを開けませんでした: " + err.message;
 });
 
 // 色から文字判定
@@ -67,7 +65,6 @@ function decodeFrame(){
                 code_id += c;
             }
         }
-
         if(code_id){
             fetch('https://collectors-hb-hampshire-rush.trycloudflare.com/api/get/'+code_id)
             .then(res=>res.json())
