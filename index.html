@@ -56,7 +56,7 @@ button:hover {
 <video id="video" autoplay playsinline muted style="display:none;"></video>
 <p id="status" class="status">カメラ開始ボタンを押してください</p>
 <p id="result">待機中...</p>
-<canvas id="canvas" width="300" height="120" style="display:none;"></canvas>
+<canvas id="canvas" width="600" height="400" style="display:none;"></canvas>
 
 <script>
 const video = document.getElementById('video');
@@ -70,6 +70,7 @@ const switchBtn = document.getElementById('switchBtn');
 const BLOCK_W = 50, BLOCK_H = 50;
 let currentStream = null;
 let useFrontCamera = false;
+let isDecoding = false;
 
 // ステータス表示関数
 function showStatus(message, type = 'warning') {
@@ -156,11 +157,34 @@ function switchCamera() {
     startCamera();
 }
 
-// 色から文字判定
+// 改良された色判定（HSV色空間も考慮）
 function colorToChar(r,g,b){
-    if(r>150 && g<100 && b<100) return 'A'; //赤→大文字
-    if(b>150 && r<100 && g<100) return 'a'; //青→小文字
-    if(g>150 && r<100 && b<100) return '0'; //緑→数字
+    // RGB値の正規化
+    const total = r + g + b;
+    if(total < 50) return ''; // 黒すぎる場合は無視
+    
+    const rRatio = r / Math.max(total, 1);
+    const gRatio = g / Math.max(total, 1);
+    const bRatio = b / Math.max(total, 1);
+    
+    // 赤が強い（大文字）
+    if(rRatio > 0.45 && r > 80 && r > g * 1.3 && r > b * 1.3) {
+        return 'A';
+    }
+    // 青が強い（小文字）
+    if(bRatio > 0.45 && b > 80 && b > r * 1.3 && b > g * 1.3) {
+        return 'a';
+    }
+    // 緑が強い（数字）
+    if(gRatio > 0.45 && g > 80 && g > r * 1.3 && g > b * 1.3) {
+        return '0';
+    }
+    
+    // フォールバック：絶対値での判定
+    if(r > 150 && g < 100 && b < 100) return 'A';
+    if(b > 150 && r < 100 && g < 100) return 'a';
+    if(g > 150 && r < 100 && b < 100) return '0';
+    
     return '';
 }
 
@@ -169,42 +193,97 @@ function startDecoding() {
     decodeFrame();
 }
 
-// フレーム解析
+// 改良されたフレーム解析
 function decodeFrame(){
     if(video.readyState === video.HAVE_ENOUGH_DATA && !video.paused){
         try {
-            ctx.drawImage(video,0,0,canvas.width,canvas.height);
-            const img = ctx.getImageData(0,0,canvas.width,canvas.height).data;
-            let code_id='';
+            // ビデオの実際のサイズを取得
+            const videoWidth = video.videoWidth || video.width;
+            const videoHeight = video.videoHeight || video.height;
             
-            for(let by=0;by<2;by++){
-                for(let bx=0;bx<5;bx++){
-                    let rSum=0,gSum=0,bSum=0,count=0;
-                    for(let y=Math.floor(by*BLOCK_H);y<Math.floor((by+1)*BLOCK_H);y++){
-                        for(let x=Math.floor(bx*BLOCK_W);x<Math.floor((bx+1)*BLOCK_W);x++){
-                            if(y < canvas.height && x < canvas.width) {
-                                const idx=(y*canvas.width + x)*4;
-                                rSum+=img[idx]; 
-                                gSum+=img[idx+1]; 
-                                bSum+=img[idx+2]; 
+            if(videoWidth === 0 || videoHeight === 0) {
+                requestAnimationFrame(decodeFrame);
+                return;
+            }
+            
+            // キャンバスサイズを動的に調整
+            const aspectRatio = videoWidth / videoHeight;
+            let canvasWidth = 600;
+            let canvasHeight = Math.floor(canvasWidth / aspectRatio);
+            
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            
+            // ビデオをキャンバスに描画
+            ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+            const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+            const data = imageData.data;
+            
+            // グリッドサイズを動的計算
+            const gridCols = 6; // 生成側と合わせる
+            const gridRows = 3;
+            const cellWidth = Math.floor(canvasWidth / gridCols);
+            const cellHeight = Math.floor(canvasHeight / gridRows);
+            
+            let detectedCode = '';
+            let detectionConfidence = [];
+            
+            for(let row = 0; row < gridRows; row++){
+                for(let col = 0; col < gridCols; col++){
+                    let rSum = 0, gSum = 0, bSum = 0, count = 0;
+                    
+                    // セルの中央部分をサンプリング（ノイズを減らすため）
+                    const startX = col * cellWidth + Math.floor(cellWidth * 0.2);
+                    const endX = col * cellWidth + Math.floor(cellWidth * 0.8);
+                    const startY = row * cellHeight + Math.floor(cellHeight * 0.2);
+                    const endY = row * cellHeight + Math.floor(cellHeight * 0.8);
+                    
+                    for(let y = startY; y < endY; y++){
+                        for(let x = startX; x < endX; x++){
+                            if(x < canvasWidth && y < canvasHeight){
+                                const idx = (y * canvasWidth + x) * 4;
+                                rSum += data[idx];
+                                gSum += data[idx + 1];
+                                bSum += data[idx + 2];
                                 count++;
                             }
                         }
                     }
+                    
                     if(count > 0) {
-                        rSum=Math.floor(rSum/count);
-                        gSum=Math.floor(gSum/count);
-                        bSum=Math.floor(bSum/count);
-                        const c=colorToChar(rSum,gSum,bSum);
-                        code_id += c;
+                        const avgR = Math.floor(rSum / count);
+                        const avgG = Math.floor(gSum / count);
+                        const avgB = Math.floor(bSum / count);
+                        
+                        const char = colorToChar(avgR, avgG, avgB);
+                        detectedCode += char;
+                        
+                        // 検出品質をチェック
+                        const brightness = (avgR + avgG + avgB) / 3;
+                        const colorStrength = Math.max(avgR, avgG, avgB) - Math.min(avgR, avgG, avgB);
+                        detectionConfidence.push({
+                            char, brightness, colorStrength,
+                            rgb: `R:${avgR} G:${avgG} B:${avgB}`
+                        });
                     }
                 }
             }
             
-            if(code_id && code_id.length === 10){
-                result.innerText = 'コードID: ' + code_id + '\nサーバーに問い合わせ中...';
+            // デバッグ情報を表示
+            const validChars = detectedCode.replace(/[^A-Za-z0-9]/g, '');
+            const detectionQuality = detectionConfidence.filter(d => d.char !== '').length;
+            
+            if(validChars.length >= 10){
+                // 完全なコードが検出された場合
+                result.innerHTML = `
+                    <div style="color: green; font-weight: bold;">✅ コード検出成功!</div>
+                    <div>コードID: <strong>${validChars}</strong></div>
+                    <div>サーバーに問い合わせ中...</div>
+                    <div style="font-size: 12px; color: #666;">検出品質: ${detectionQuality}/18</div>
+                `;
                 
-                fetch('https://collectors-hb-hampshire-rush.trycloudflare.com/api/get/'+code_id)
+                // API呼び出し
+                fetch('https://collectors-hb-hampshire-rush.trycloudflare.com/api/get/' + validChars)
                 .then(res => {
                     if (!res.ok) {
                         throw new Error('HTTP ' + res.status);
@@ -212,16 +291,48 @@ function decodeFrame(){
                     return res.json();
                 })
                 .then(data => {
-                    result.innerText = '読み取ったデータ:\n' + JSON.stringify(data, null, 2);
+                    result.innerHTML = `
+                        <div style="color: green; font-weight: bold;">📋 データ取得成功!</div>
+                        <div style="background: #f0f8ff; padding: 10px; border-radius: 5px; margin: 10px 0; text-align: left;">
+                            <strong>内容:</strong><br>
+                            ${data.text || 'データが見つかりませんでした'}
+                        </div>
+                        <div style="font-size: 12px; color: #666;">コードID: ${validChars}</div>
+                    `;
                 })
                 .catch(err => {
-                    result.innerText = 'データ取得失敗: ' + err.message + '\nコードID: ' + code_id;
+                    result.innerHTML = `
+                        <div style="color: orange;">⚠️ データ取得失敗</div>
+                        <div>エラー: ${err.message}</div>
+                        <div>検出したコード: ${validChars}</div>
+                    `;
                 });
+            } else if(validChars.length > 0) {
+                // 部分的に検出された場合
+                result.innerHTML = `
+                    <div style="color: blue;">🔍 コード解析中...</div>
+                    <div>検出: "${validChars}" (${validChars.length}/10文字)</div>
+                    <div style="font-size: 12px; color: #666;">
+                        品質: ${detectionQuality}/18 | 
+                        生データ: "${detectedCode}"
+                    </div>
+                    <div style="font-size: 11px; color: #999;">
+                        カメラをコードに近づけて、照明を調整してください
+                    </div>
+                `;
             } else {
-                result.innerText = '解析中... (検出コード: ' + code_id + ')';
+                // 何も検出されない場合
+                result.innerHTML = `
+                    <div style="color: #666;">👁️ コードを探しています...</div>
+                    <div style="font-size: 12px;">
+                        コードをカメラの中央に配置してください
+                    </div>
+                `;
             }
+            
         } catch (err) {
             console.error('デコードエラー:', err);
+            result.innerHTML = `<div style="color: red;">エラー: ${err.message}</div>`;
         }
     }
     
